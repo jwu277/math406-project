@@ -70,7 +70,7 @@
 
 %%
 
-\title{$y$-adaptive Gradient Descent}
+\title{TODO TITLE}
 \author{James Wu \quad 92277235}
 \date{}
 
@@ -103,7 +103,7 @@
     \end{align*}
     for some $\xi \in (a, a+k)$ and $\zeta \in (a-k, a)$. A bound for this error $E(k, \Delta)$ is then
     $$E(k, \Delta) = \frac{1}{6}K_3k^2 + \frac{\Delta}{k}$$
-    where $K_3$ is a bound on the third derivative of $f(x)$. Note that Taylor analysis is not applied to $\delta(x)$ because it is not continuous--$\delta(x)$ is discretized, for example, in the spectral density function case.
+    where $K_3$ is a bound on the absolute value of the third derivative of $f(x)$. Note that Taylor analysis is not applied to $\delta(x)$ because it is not continuous--$\delta(x)$ is discretized, for example, in the spectral density function case.
     
     Now, the computation time $C(k, \Delta)$ is independent of $k$ because only a single finite difference is computed. $C(k, \Delta)$ is inversely proportional to $\Delta$ in the spectral density function scenario, however, because the number of $A(E)$ evaluations for a given interval size $|I|$ is approximately $|I|/dE$:
     $$\boxed{C(k, \Delta) \sim \Delta^{-1}}$$
@@ -111,12 +111,43 @@
     \begin{align*}
         \deriv{E}{k} &= \pderiv{E}{k} = \frac{1}{3}K_3k - \frac{\Delta}{k^2} = 0
     \end{align*}
+    This is indeed a minimum by the second derivative test:
+    \begin{align*}
+        \nderiv{E}{k}{2} &= \npderiv{E}{k}{2} = \frac{1}{3}K_3 + \frac{2\Delta}{k^3} > 0
+    \end{align*}
     So the optimal $k$-$\Delta$ relationship is
     $$\boxed{\Delta = \frac{1}{3}K_3k^3}$$
     The cubic relationship makes sense because the $\frac{1}{6}K_3k^2$ and $\frac{\Delta}{k}$ terms in $E(k, \Delta)$ should scale the same--if they did not, the term that vanishes the slowest would become a bottleneck and could be made smaller for faster error convergence. The error bound is then
-    $$\boxed{E(k, \Delta) = \frac{1}{2}K_3k^3 = \frac{3^{2/3}}{2}K_3^{2/3}\Delta^{2/3}}$$
-    The error bounds scales with the comptuation time as:
+    $$\boxed{E(k, \Delta) = \frac{1}{2}K_3k^2 = \frac{3^{2/3}}{2}K_3^{2/3}\Delta^{2/3}}$$
+    The error bound therefore scales with the comptuation time as:
     $$\boxed{E \sim C^{-2/3}}$$
+
+    \subsection{Second Derivative}
+    We now consider the task of estimating $f''(a)$:
+    $$f''(a) \approx \frac{g(a+k) - 2g(a) + g(a-k)}{k^2}$$
+    The error in this method is
+    \begin{align*}
+        f''(a) - \frac{g(a+k) - 2g(a) + g(a-k)}{k^2} &= f''(a) - \frac{f(a+k) - 2f(a) + f(a-k)}{k^2} \\ &- \frac{\delta(a+k) - 2\delta(a) + \delta(a-k)}{k^2} \\
+        &= -\frac{1}{24}f''''(\xi)k^2 + \frac{1}{24}f''''(\zeta)k^2 - \frac{\delta(a+k) - 2\delta(a) + \delta(a-k)}{k^2}
+    \end{align*}
+    for some $\xi \in (a, a+k)$ and $\zeta \in (a-k, a)$. A bound for this error $E(k, \Delta)$ is then
+    $$E(k, \Delta) = \frac{1}{12}K_4k^2 + \frac{4\Delta}{k^2}$$
+    where $K_4$ is a bound on the absolute value of the fourth derivative of $f(x)$. Again, the computation time is scaled as such:
+    $$\boxed{C(k, \Delta) \sim \Delta^{-1}}$$
+    The optimal $k$-$\Delta$ relationship is given by:
+    \begin{align*}
+        \deriv{E}{k} &= \pderiv{E}{k} = \frac{1}{6}K_4k - \frac{8\Delta}{k^3} = 0
+    \end{align*}
+    This is indeed a minimum by the second derivative test:
+    \begin{align*}
+        \nderiv{E}{k}{2} &= \npderiv{E}{k}{2} = \frac{1}{6}K_4 + \frac{24\Delta}{k^4} > 0
+    \end{align*}
+    The ideal $k$-$\Delta$ relationship is thus
+    $$\boxed{\Delta = \frac{1}{48}K_4k^4}$$
+    Similar to the central difference case, the $\frac{1}{12}K_4k^2$ and $\frac{4\Delta}{k^2}$ terms scale the same under this relationship. The error bound is then
+    $$\boxed{E(k, \Delta) = \frac{1}{6}K_4k^2 = \frac{2}{\sqrt{3}}K_4^{1/2}\Delta^{1/2}}$$
+    The error bound therefore scales with the comptuation time as:
+    $$\boxed{E \sim C^{-1/2}}$$
 
 \end{flushleft}
 \end{document}
