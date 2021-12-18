@@ -1,0 +1,281 @@
+\documentclass[letterpaper,11pt]{article}
+
+%% AMS mathematics packages - they contain many useful fonts and symbols.
+\usepackage{amsmath, amsfonts, amssymb, bm, amsthm}
+
+%% The geometry package changes the margins to use more of the page, I suggest
+%% using it because standard latex margins are chosen for articles and letters,
+%% not homework.
+\usepackage[paper=letterpaper,left=25mm,right=25mm,top=30mm,bottom=30mm]{geometry}
+%% For details of how this package work, google the ``latex geometry documentation''.
+
+\usepackage{graphicx}
+
+\setlength{\headheight}{15pt}
+
+%%%%%%
+%% The above stuff is the same as the first template, but now we are starting to prove things, so we'd like to have a
+%% good proof environment that gives us nice formatting and a little square at the end.
+%% We'd also like a nice Result environment that prints that up nicely too.
+%% Thankfully this exists in latex in the amsthm package
+\usepackage{amsthm}
+\newtheorem*{thm}{Theorem}
+%% This creates a new theorem-like environment called "result", that will be titled "Result".
+%% See below for examples of how to use this.
+%%%%%%
+\usepackage{enumitem}
+%% This package allows us to make nice ordered lists with numbers, letters or roman numerals
+
+\usepackage{titlesec}
+% \titlespacing*{\subsection}{0pt}{0pt}{3.0ex}
+% \titlespacing*{\subsubsection}{0pt}{3.0ex}{0.5ex}
+
+\usepackage[hang,flushmargin]{footmisc}
+
+\setlength{\parindent}{0em}
+\setlength{\parskip}{0.5em}
+
+\allowdisplaybreaks
+
+\usepackage{empheq}
+
+\newcommand*\wfbox[1]{\fbox{\hspace{0.4em}#1\hspace{0.4em}}}
+
+%% Useful commands
+\renewcommand*{\qed}{\hfill\ensuremath{\square}}
+
+\newcommand*{\uvec}[1]{\hat{\bm{#1}}}
+
+\newcommand*{\deriv}[2]{\frac{d #1}{d #2}}
+\newcommand*{\pderiv}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand*{\nderiv}[3]{\frac{d^{#3} #1}{d #2^{#3}}}
+\newcommand*{\npderiv}[3]{\frac{\partial^{#3} #1}{\partial #2^{#3}}}
+\newcommand*{\divg}[1]{\nabla \cdot \mathbf{#1}}
+\newcommand*{\curl}[1]{\nabla \times \mathbf{#1}}
+
+\newcommand*{\abs}[1]{\left| #1 \right|}
+\newcommand*{\norm}[1]{\abs{\abs{#1}}}
+
+\renewcommand*{\Re}[1]{\text{Re}\left(#1\right)}
+\renewcommand*{\Im}[1]{\text{Im}\left(#1\right)}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\newcommand*{\qimg}[2]{\\ \begin{center}\includegraphics[scale=#1]{#2}\end{center}}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}{Corollary}[theorem]
+
+%%
+
+\title{TODO TITLE}
+\author{James Wu \quad 92277235}
+\date{}
+
+\begin{document}
+\maketitle
+\begin{flushleft}
+    
+    \section{Background}
+    In one of my condensed matter physics research projects, I am looking to fit a vector of paramters $\mathbf{v}$ to describe the interactions of a quantum mechanical system (the system is parametrized by $\mathbf{v}$). There is another vector of real numbers $\mathbf{k}$ (the system's momentum) that also parametrizes the system. Now, the system's ground state energy $E_0(\mathbf{v}, \mathbf{k})$ is to be matched with target energies $E_T(\mathbf{k})$. This is done by interpolating for a finite number of $\mathbf{k}$ points (in practice this seems to match $E_T(\mathbf{k})$ for all $\mathbf{k}$ quite well). One way to find an appropriate $\mathbf{v}$ is to use gradient descent on the cost function
+    $$J(\mathbf{v}) = \norm{\mathbf{E_0}(\mathbf{v}) - \mathbf{E_T}}_2$$
+    Here $\mathbf{E_0}$ and $\mathbf{E_T}$ are vectors with entries that are energy values at various $\mathbf{k}$ values. In short, we use a least squares fit. $E_0(\mathbf{v}, \mathbf{k})$ can computed as the energy where the \textit{spectral density function} $A(E)$ spikes. For example, in the following figure, we see that $E \approx -9.1$:
+    \qimg{0.8}{img/spec.jpg}
+    Numerically, we restrict ourselves to an interval $I$ with $N$ evenly spaced grid points to evaluate $A(E)$. We thus have
+    $$E_0(\mathbf{v}, \mathbf{k}) = \argmax_{E \in I} A(E, \mathbf{v}, \mathbf{k})$$
+    There is another parameter $\eta$, which controls the spikes width, that is set equal to the grid spacing $dE$ to ensure that the spike will be detected. Locally, this spike is symmetric (a Lorentzian, in fact) in the limit $\eta \to 0^+$. So the error in this method is roughly bounded by $dE/2$. This error propagates to the $J(\mathbf{v})$ function to also produce an error bound of $dE/2$ if we use a dimensionality-agnostic 2-norm (i.e. divide by the square root of the dimension of the energy vectors).
+
+    In the following analyses, we consider single-variable functions for simplicity. Let $f(x)$ be such a function that we are interested in and $g(x) = f(x) + \delta(x)$ be a noisy function with $|\delta(x)| \leq \Delta$ for some positive error bound $\Delta$ (e.g. $\Delta = dE/2$).
+
+    To motivate this project, I seek to answer the question of how $\Delta$ should be scaled relative to the other numerical parameters to obtain the best accuracy for the least computation time. I will therefore be determining the asymptotic errors for various numerical methods for a given number of computations.
+
+    \section{Derivatives}
+
+    \subsection{First Derivative: Central Difference}
+    Suppose we want to compute the derivative of $f(x)$ but only have access to evaluating the noisy function $g(x)$. A central difference yields:
+    $$f'(a) \approx \frac{g(a+k) - g(a-k)}{2k}$$
+    The error in this method is
+    \begin{align*}
+        f'(a) - \frac{g(a+k) - g(a-k)}{2k} &= f'(a) - \frac{f(a+k) - f(a-k)}{2k} - \frac{\delta(a+k) - \delta(a-k)}{2k} \\
+        &= -\frac{1}{12}f'''(\xi)k^2 + \frac{1}{12}f'''(\zeta)k^2 - \frac{\delta(a+k) - \delta(a-k)}{2k}
+    \end{align*}
+    for some $\xi \in (a, a+k)$ and $\zeta \in (a-k, a)$. A bound for this error $E(k, \Delta)$ is then
+    $$E(k, \Delta) = \frac{1}{6}K_3k^2 + \frac{\Delta}{k}$$
+    where $K_3$ is a bound on the absolute value of the third derivative of $f(x)$. Note that Taylor analysis is not applied to $\delta(x)$ because it is not continuous--$\delta(x)$ is discretized, for example, in the spectral density function case.
+    
+    Now, the computation time $C(k, \Delta)$ is independent of $k$ because only a single finite difference is computed. $C(k, \Delta)$ is inversely proportional to $\Delta$ in the spectral density function scenario, however, because the number of $A(E)$ evaluations for a given interval size $|I|$ is approximately $|I|/dE$:
+    $$\boxed{C(k, \Delta) \sim \Delta^{-1}}$$
+    The optimal $k$ that produces a minimal error bound given a fixed $C(k, \Delta)$ and therefore fixed $\Delta$ is given by
+    \begin{align*}
+        \deriv{E}{k} &= \pderiv{E}{k} = \frac{1}{3}K_3k - \frac{\Delta}{k^2} = 0
+    \end{align*}
+    This is indeed a minimum by the second derivative test:
+    \begin{align*}
+        \nderiv{E}{k}{2} &= \npderiv{E}{k}{2} = \frac{1}{3}K_3 + \frac{2\Delta}{k^3} > 0
+    \end{align*}
+    So the optimal $k$-$\Delta$ relationship is
+    $$\boxed{\Delta = \frac{1}{3}K_3k^3}$$
+    The cubic relationship makes sense because the $\frac{1}{6}K_3k^2$ and $\frac{\Delta}{k}$ terms in $E(k, \Delta)$ should scale the same--if they did not, the term that vanishes the slowest would become a bottleneck and could be made smaller for faster error convergence. The error bound is then
+    $$\boxed{E(k, \Delta) = \frac{1}{2}K_3k^2 = \frac{3^{2/3}}{2}K_3^{2/3}\Delta^{2/3}}$$
+    The error bound therefore scales with the comptuation time as:
+    $$\boxed{E \sim C^{-2/3}}$$
+
+    \subsection{Second Derivative}
+    We now consider the task of estimating $f''(a)$:
+    $$f''(a) \approx \frac{g(a+k) - 2g(a) + g(a-k)}{k^2}$$
+    The error in this method is
+    \begin{align*}
+        f''(a) - \frac{g(a+k) - 2g(a) + g(a-k)}{k^2} &= f''(a) - \frac{f(a+k) - 2f(a) + f(a-k)}{k^2} \\ &- \frac{\delta(a+k) - 2\delta(a) + \delta(a-k)}{k^2} \\
+        &= -\frac{1}{24}f''''(\xi)k^2 + \frac{1}{24}f''''(\zeta)k^2 - \frac{\delta(a+k) - 2\delta(a) + \delta(a-k)}{k^2}
+    \end{align*}
+    for some $\xi \in (a, a+k)$ and $\zeta \in (a-k, a)$. A bound for this error $E(k, \Delta)$ is then
+    $$E(k, \Delta) = \frac{1}{12}K_4k^2 + \frac{4\Delta}{k^2}$$
+    where $K_4$ is a bound on the absolute value of the fourth derivative of $f(x)$. Again, the computation time is scaled as such:
+    $$\boxed{C(k, \Delta) \sim \Delta^{-1}}$$
+    The optimal $k$-$\Delta$ relationship is given by:
+    \begin{align*}
+        \deriv{E}{k} &= \pderiv{E}{k} = \frac{1}{6}K_4k - \frac{8\Delta}{k^3} = 0
+    \end{align*}
+    This is indeed a minimum by the second derivative test:
+    \begin{align*}
+        \nderiv{E}{k}{2} &= \npderiv{E}{k}{2} = \frac{1}{6}K_4 + \frac{24\Delta}{k^4} > 0
+    \end{align*}
+    The ideal $k$-$\Delta$ relationship is thus
+    $$\boxed{\Delta = \frac{1}{48}K_4k^4}$$
+    Similar to the central difference case, the $\frac{1}{12}K_4k^2$ and $\frac{4\Delta}{k^2}$ terms scale the same under this relationship. The error bound is then
+    $$\boxed{E(k, \Delta) = \frac{1}{6}K_4k^2 = \frac{2}{\sqrt{3}}K_4^{1/2}\Delta^{1/2}}$$
+    The error bound therefore scales with the comptuation time as:
+    $$\boxed{E \sim C^{-1/2}}$$
+
+    \section{Finit Difference Methods}
+
+    \subsection{1-Periodic $-u'' + u = f$}
+    Consider the following 1-periodic ODE:
+    $$-u''(x) + u(x) = f(x)$$
+    We may solve this problem using finite differences by discretizing the interval $[0, 1)$ into $N$ uniformly-spaced grid points, with $k = 1/N$ being the grid spacing. Now let $\mathbf{u}$ be $u(x)$ evaluated at these points and $\mathbf{U}$ be our numerical estimation of $\mathbf{u}$. Then
+    \begin{align*}
+        A\mathbf{U} &= \mathbf{G} = \mathbf{F} + \mathbf{\delta} \\
+        A\mathbf{u} &= \mathbf{F} - \mathbf{\tau}
+    \end{align*}
+    Here $A = -D_2 + I$ (and $A$ is nonsingular), $\mathbf{F}$ is $f(x)$ evaluated at the grid points, $\mathbf{G}$ is our noisy evaluation of $\mathbf{F}$ with error $\mathbf{\delta}$, where $\norm{\mathbf{\delta}}_2 \leq \Delta$, and $\mathbf{\tau}$ is the truncation error in the (non-noisy) finite difference approximation. This numerical recipe takes the following steps to complete:
+    \begin{enumerate}
+        \item $\mathbf{G}$ needs to be constructed. There are $N = k^{-1}$ entries, each of which require $O(\Delta^{-1})$ computations. This step has a runtime of $O(k^{-1}\Delta^{-1})$.
+        \item $A$ needs to be constructed. Since $A$ is sparse, this step takes $O(N) = O(k^{-1})$ computations.
+        \item The system $A\mathbf{U} = \mathbf{G}$ needs to be solved. Since $A$ is sparse, this step also has a runtime of $O(k^{-1})$.
+    \end{enumerate}
+    The bottleneck occurs in the first step, giving a total runtime of
+    $$\boxed{C \sim k^{-1}\Delta^{-1}}$$
+    Meanwhile, the error $\mathbf{E} = \mathbf{u} - \mathbf{U}$ is given by
+    \begin{align*}
+        A\mathbf{E} &= A\mathbf{u} - A\mathbf{U} = -\mathbf{\tau} - \mathbf{\delta} \\
+        \mathbf{E} &= -A^{-1}\mathbf{\tau} - A^{-1}\mathbf{\delta}
+    \end{align*}
+    We know that $\norm{A^{-1}}_2 = 1$ from von Neumann analysis. The truncation error $\mathbf{\tau} = \mathbf{F} - A\mathbf{u}$ is bounded by the non-noisy finite difference error bound:
+    $$\norm{\mathbf{\tau}}_2 \leq \frac{1}{12}K_4k^2$$
+    This bounds the error as:
+    $$\norm{\mathbf{E}}_2 \leq \norm{\mathbf{\tau}}_2 + \norm{\mathbf{\delta}}_2 = \frac{1}{12}K_4k^2 + \Delta$$
+    For a fixed $C(k, \Delta) = k^{-1}\Delta^{-1}$, we can treat $\Delta$ as a function of $k$: $\Delta = C^{-1}k^{-1}$. Then optimizing the error bound gets us:
+    \begin{align*}
+        E(k, \Delta) &= \frac{1}{12}K_4k^2 + \Delta \\
+        \deriv{E}{k} &= \pderiv{E}{k} + \pderiv{E}{\Delta}\deriv{\Delta}{k} = \frac{1}{6}K_4k - C^{-1}k^{-2} = \frac{1}{6}K_4k - k^{-1}\Delta = 0
+    \end{align*}
+    $$\boxed{\Delta = \frac{1}{6}K_4k^2}$$
+    Again, both error terms scale the same in this relationship. Finally, we verify that this is indeed a minimum:
+    \begin{align*}
+        \nderiv{E}{k}{2} &= \npderiv{E}{k}{2} + \npderiv{E}{\Delta}{2}\left(\deriv{\Delta}{k}\right)^2 + \frac{\partial^2 E}{\partial\Delta\partial k}\deriv{\Delta}{k} + \pderiv{E}{\Delta}\nderiv{\Delta}{k}{2}  \\
+        &= \npderiv{E}{k}{2} + \pderiv{E}{\Delta}\nderiv{\Delta}{k}{2} = \frac{1}{6}K_4 + 2C^{-1}k^{-2} > 0
+    \end{align*}
+    The error bound is now
+    $$\boxed{E(k, \Delta) = \frac{1}{4}K_4k^2 = \frac{3}{2}\Delta}$$
+    The runtime under this $k$-$\Delta$ relationship scales as $C \sim k^{-3} \sim \Delta^{-3/2}$. The error therefore scales with runtime as
+    $$\boxed{E \sim C^{-2/3}}$$
+
+    \section{Time Stepping}
+    
+    \subsection{Forward Euler}
+    \subsubsection{Error Analysis}
+    Consider the initial value problem:
+    $$u'(t) = f(u, t), \quad u(0) = u_0, \quad t \in [0, \infty)$$
+    We can approximate $u(t)$ numerically up to a cutoff time $T$ using Euler's method. This is done by estimating $u(t)$ at evenly-spaced time intervals of $k$. Let $U_n$ denote the estimate of $u(nk)$. Then $U^0 = u_0$ and
+    $$U_{n+1} = U_n + kg(U_n, nk)$$
+    where $g(u, t) = f(u, t) + \delta(u, t)$ and $|\delta| \leq \Delta$. We find the local error by assuming $U_n = u(nk)$:
+    \begin{align*}
+        u((n+1)k) - U_{n+1} &= u((n+1)k) - u(nk) - ku'(nk) - k\delta(u(nk), nk) \\
+        &= -\frac{k^2}{2}f''(\xi) - k\delta(u(nk), nk)
+    \end{align*}
+    We can then bound the local error by:
+    $$\abs{u((n+1)k) - U_{n+1}} \leq L(k, \Delta) = \frac{1}{2}K_2k^2 + k\Delta$$
+    where $K_2$ is a bound on $\abs{u''(t)}$. As a rough estimate, the global error scales as $k^{-1}L(k, \Delta)$. We shall therefore minimize the following global error estimate for a fixed number of computations:
+    $$E(k, \Delta) = \frac{1}{2}K_2k + \Delta$$
+    Regarding the computational complexity of this method, there are $T/k$ time steps, and each time step requires $O(\Delta^{-1})$ evaluations of $g(u, t)$. The computation time thus scales as
+    $$\boxed{C \sim k^{-1}\Delta^{-1}}$$
+    Next we optimize
+    \begin{align*}
+        E &= \frac{1}{2}K_2k + C^{-1}k^{-1} \\
+        \deriv{E}{k} &= \frac{1}{2}K_2 - C^{-1}k^{-2} = \frac{1}{2}K_2 - k^{-1}\Delta = 0
+    \end{align*}
+    We thus obtain the relationship
+    $$\boxed{\Delta = \frac{1}{2}K_2k}$$
+    We also verify the second derivative test:
+    $$\nderiv{E}{k}{2} = 2C^{-1}k^{-3} > 0$$
+    The global error thus scales as:
+    $$\boxed{E \sim K_2 k \sim \Delta}$$
+    In terms of time complexity, we have $C \sim k^{-2} \sim \Delta^{-2}$. That means
+    $$\boxed{E \sim C^{-1/2}}$$
+    \subsubsection{Stability}
+    To investigate the stability of Forward Euler for a noisy function, we consider the test problem
+    $$u' = \lambda u \; \therefore \; u(t) = e^{\lambda t}$$
+    Then
+    $$U_{n+1} = U_n + kf(U_n, nk) + k\delta(U_n, nk) = \left(1 + k\lambda + \frac{k\delta}{U_n}\right)U_n$$
+    We attain stability when
+    $$\abs{1 + k\lambda + \frac{k\delta}{U_n}} \leq 1$$
+    By the triangle inequality, this condition is satisfied when
+    $$\boxed{\abs{1 + k\lambda} + \frac{k\Delta}{\abs{U_n}} \leq 1}$$
+    In the case of minimal error, we have $\Delta = \frac{1}{2}K_2 k$, so the stability condition becomes
+    $$\abs{1 + k\lambda} + \frac{K_2 k^2}{2\abs{U_n}} \leq 1$$
+    As $k$ vanishes (for a fixed $T$ and therefore maximal $\abs{U_n}$), the $\frac{K_2 k^2}{2\abs{U_n}}$ term becomes negligible compared to the $k\lambda$ term. So the region of stability in the $z = k\lambda$ plane remains roughly the same in the limit of small $k$.
+
+    \subsection{Improved Euler}
+    \subsubsection{Error Analysis}
+    The Improved Euler uses the following recursion:
+    $$U_{n+1} = U_n + \frac{k}{2}\left(g(U_n, nk) + g(U_n + kg(U_n, nk), (n+1)k)\right)$$
+    Again, the computational complexity scales as
+    $$\boxed{C \sim k^{-1}\Delta^{-1}}$$
+    although with thrice as many evaluations of $g(u, t)$ at each time step as the Forward Euler method. Elsewhere, the local error is
+    \begin{align*}
+        u((n+1)k) - U_{n+1} &= u((n+1)k) - u(nk) \\ &- \frac{k}{2}\left(f(u(nk), nk) + f(u(nk) + kg(u(nk), nk), (n+1)k)\right) \\ &- \frac{k}{2}\left(\delta(u(nk), nk) + \delta(u(nk) + kg(u(nk), nk), (n+1)k)\right) \\
+        &= u((n+1)k) - u(nk) \\ &- \frac{k}{2}\left(f(u(nk), nk) + f(u(nk) + kf(u(nk), nk), (n+1)k)\right) \\ &- \frac{k}{2}\left(\delta(u(nk), nk)\left(1 + kf_u + O(k^2)\right) + \delta(u(nk) + kg(u(nk), nk), (n+1)k)\right) \\
+        &= u((n+1)k) - u(nk) \\ &- \frac{k}{2}\left(2f + k(f_uf + f_t) + \frac{k^2}{2}(f_{uu}f^2 + f_{tt} + 2f_{ut}f) + O(k^3)\right) \\ &- \frac{k}{2}\left(\delta(u(nk), nk)\left(1 + kf_u + O(k^2)\right) + \delta(u(nk) + kg(u(nk), nk), (n+1)k)\right) \\
+        &= \frac{1}{6}\ddot{f}k^3 - \frac{1}{4}(f_{uu}f^2 + f_{tt} + 2f_{ut}f)k^3 \\ &- \frac{k}{2}\left(\delta(u(nk), nk)\left(1 + kf_u + O(k^2)\right) + \delta(u(nk) + kg(u(nk), nk), (n+1)k)\right)
+    \end{align*}
+    Now let $B$ be an upper bound on the second derivatives of $f$ as such:
+    $$\abs{\frac{1}{6}\ddot{f} - \frac{1}{4}(f_{uu}f^2 + f_{tt} + 2f_{ut}f)} \leq B$$
+    Then the local error is bounded by
+    $$\abs{u((n+1)k) - U_{n+1}} \leq Bk^3 + k\Delta$$
+    Factoring out $k^{-1}$ gives us an estimate for global error:
+    $$E(k, \Delta) = Bk^2 + \Delta$$
+    Differentiating,
+    \begin{align*}
+        E &= Bk^2 + C^{-1}k^{-1} \\
+        \deriv{E}{k} &= 2Bk - C^{-1}k^{-2} = 0 \\
+        \nderiv{E}{k}{2} &= 2B + 2C^{-1}k^{-3} > 0
+    \end{align*}
+    The first derivative test yields
+    $$\boxed{\Delta \sim k^2}$$
+    This gives an error that scales as
+    $$\boxed{E \sim k^2 \sim \Delta \sim C^{-2/3}}$$
+    \subsubsection{Stability}
+    Again considering the test problem $u' = \lambda u$, we have
+    \begin{align*}
+        U_* &= U_n + kg(U_n, nk) = \left(1 + k\lambda + \frac{k\delta(U_n, nk)}{U_n}\right)U_n \\
+        U_{n+1} &= U_n + \frac{k}{2}\left(g(U_n, nk) + g(U_*, (n+1)k)\right) \\
+        &= U_n + \frac{k\lambda}{2}\left(2 + k\lambda + \frac{k\delta(U_n, nk)}{U_n}\right)U_n + \frac{k}{2}\left(\delta(U_n, nk) + \delta(U_*, (n+1)k)\right)
+    \end{align*}
+    So the method is stable when
+    $$\boxed{\abs{1 + k\lambda + \frac{k^2\lambda^2}{2}} + \frac{k\Delta}{2\abs{U_n}}\left(1 + \abs{1 + k\lambda}\right) \leq 1}$$
+    If we scale $\Delta \sim k^2$, we again see that this approaches the non-noisy stability condition $\abs{1 + k\lambda + \frac{k^2\lambda^2}{2}} \leq 1$ when we neglect terms of order $k^3$ or higher.
+
+\end{flushleft}
+\end{document}
